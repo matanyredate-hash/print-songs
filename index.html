@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>מדפיס השירים</title>
+<style>
+:root{color-scheme:light;--ink:#172033;--blue:#2357d8;--line:#d8deea;--soft:#f4f6fb}
+*{box-sizing:border-box}
+body{margin:0;background:#eef1f7;color:var(--ink);font-family:Arial,"Noto Sans Hebrew",sans-serif;line-height:1.55}
+header{background:#172b4d;color:#fff;padding:22px 16px;text-align:center}
+header h1{margin:0;font-size:clamp(24px,4vw,34px)} header p{margin:5px 0 0;color:#dce6ff}
+main{max-width:1100px;margin:22px auto;padding:0 14px 35px;display:grid;gap:16px}
+.panel{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 4px 16px #182c4d0a}
+h2{font-size:19px;margin:0 0 12px}
+label{display:block;font-weight:700;margin:12px 0 5px}
+input,textarea,select{font:inherit;width:100%;padding:11px 12px;border:1px solid #bfc9dc;border-radius:9px;background:white;color:var(--ink)}
+textarea{min-height:245px;resize:vertical;direction:rtl;white-space:pre-wrap}
+button{font:inherit;font-weight:700;border:0;border-radius:9px;padding:10px 15px;cursor:pointer;background:var(--blue);color:white}
+button.secondary{background:#e8edf7;color:#20304e}
+button:disabled{opacity:.5;cursor:default}
+.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.note{font-size:14px;color:#59667d;margin:8px 0 0}
+.status{padding:10px 12px;border-radius:9px;background:var(--soft);margin-top:10px;white-space:pre-wrap;font-size:14px}
+.preview-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+#songTitle{font-size:20px;font-weight:700}
+#preview{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:220px;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;direction:rtl;font-size:16px;line-height:1.65}
+#preview:empty:before{content:"כאן תופיע תצוגת השיר";color:#8a94a7}
+.scroll-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.small{font-size:13px;color:#66728a}
+@media(min-width:850px){main{grid-template-columns: minmax(310px, .9fr) minmax(0,1.1fr)}.editor{grid-row:span 2}}
+@media print{
+ @page{size:A4 portrait;margin:12mm}
+ body{background:#fff;color:#000;font-size:10.5pt;line-height:1.35}
+ header,.controls,.editor,.preview-head,.no-print,.note,.status{display:none!important}
+ main{display:block;max-width:none;margin:0;padding:0}
+ .panel{border:0;border-radius:0;box-shadow:none;padding:0}
+ #preview{display:block!important;min-height:0;border:0;border-radius:0;padding:0;font-size:10.5pt;line-height:1.35;white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere;direction:rtl;
+ column-count:2;column-gap:10mm;column-rule:1px solid #111;column-fill:balance}
+ #songTitle{display:none!important}
+}
+</style>
+</head>
+<body>
+<header><h1>מדפיס השירים</h1><p>מסדרים את מילות השיר להדפסה נקייה בשני טורים</p></header>
+<main>
+<section class="panel editor">
+<h2>1. הבאת השיר</h2>
+<label for="source">מקור השיר</label>
+<select id="source"><option value="auto">זיהוי לפי הקישור</option><option value="negina">Negina</option><option value="nagnu">נגנו</option><option value="manual">הדבקת טקסט בלבד</option></select>
+<label for="url">קישור לשיר (לא חובה)</label>
+<input id="url" type="url" placeholder="הדבק קישור לשיר מ־Negina או נגנו">
+<div class="actions controls"><button id="load">נסה לטעון מהקישור</button><button class="secondary" id="openSource">פתח את הקישור</button></div>
+<div id="status" class="status" role="status">אם האתר חוסם טעינה חיצונית, פתח את הקישור והעתק את מילות השיר והאקורדים לתיבה למטה.</div>
+<label for="titleInput">שם השיר (לא יודפס)</label>
+<input id="titleInput" placeholder="שם השיר">
+<label for="lyrics">מילים ואקורדים</label>
+<textarea id="lyrics" placeholder="הדבק כאן את מילות השיר והאקורדים. אפשר לשמור על ירידות השורה המקוריות."></textarea>
+<div class="actions controls"><button id="update">עדכן תצוגה</button><button class="secondary" id="clear">נקה</button><button id="print">הדפס / שמור כ־PDF</button></div>
+<p class="note">האתר לא שולח את הטקסט שלך לשום שרת. טעינה אוטומטית עובדת רק אם אתר המקור מאפשר זאת בדפדפן.</p>
+</section>
+<section class="panel">
+<div class="preview-head"><div><h2>2. תצוגה מקדימה</h2><div id="songTitle"></div></div><button class="controls" id="print2">הדפס</button></div>
+<div id="preview"></div>
+</section>
+<section class="panel controls">
+<h2>גלילה איטית</h2>
+<p class="note">הגלילה עובדת על הדף הנוכחי, ומתאימה לקריאת השיר על המסך.</p>
+<div class="scroll-controls"><label for="speed" style="margin:0">מהירות:</label><select id="speed" style="width:auto"><option value="1">איטית מאוד</option><option value="2" selected>איטית</option><option value="4">בינונית</option><option value="7">מהירה</option></select><button id="startScroll">התחל גלילה</button><button class="secondary" id="stopScroll">עצור</button><button class="secondary" id="topScroll">חזור למעלה</button></div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+let scrollTimer=null;
+function updatePreview(){ $('preview').textContent=$('lyrics').value; $('songTitle').textContent=$('titleInput').value.trim(); }
+$('update').addEventListener('click',updatePreview);
+$('lyrics').addEventListener('input',updatePreview);
+$('titleInput').addEventListener('input',()=>{$('songTitle').textContent=$('titleInput').value.trim()});
+$('clear').addEventListener('click',()=>{if(!confirm('לנקות את שם השיר והטקסט?'))return;$('lyrics').value='';$('titleInput').value='';$('url').value='';$('status').textContent='אפשר להדביק שיר חדש.';updatePreview()});
+function getUrl(){try{const u=new URL($('url').value.trim());if(!['http:','https:'].includes(u.protocol))throw 0;return u.href}catch(e){return null}}
+$('openSource').addEventListener('click',()=>{const u=getUrl();if(!u){$('status').textContent='הדבק קודם קישור תקין לשיר.';return}window.open(u,'_blank','noopener,noreferrer')});
+$('load').addEventListener('click',async()=>{
+ const u=getUrl(); if(!u){$('status').textContent='הדבק קודם קישור תקין לשיר.';return}
+ const btn=$('load');btn.disabled=true;$('status').textContent='מנסה לטעון את הדף…';
+ try{
+  const response=await fetch(u,{mode:'cors',credentials:'omit'});
+  if(!response.ok)throw new Error('HTTP '+response.status);
+  const html=await response.text();const doc=new DOMParser().parseFromString(html,'text/html');
+  doc.querySelectorAll('script,style,nav,header,footer,form,button,iframe,noscript').forEach(n=>n.remove());
+  let candidates=[...doc.querySelectorAll('main,article,[class*="song"],[class*="lyrics"],[class*="content"],.entry-content')];
+  candidates.sort((a,b)=>(b.innerText||'').length-(a.innerText||'').length);
+  let text=(candidates[0]?.innerText||doc.body?.innerText||'').trim();
+  text=text.split('\n').map(s=>s.trimEnd()).join('\n').replace(/\n{3,}/g,'\n\n').trim();
+  if(text.length<40)throw new Error('לא נמצא טקסט שיר ברור');
+  $('lyrics').value=text;
+  if(!$('titleInput').value)$('titleInput').value=doc.querySelector('h1')?.innerText||doc.title||'';
+  updatePreview();$('status').textContent='הטעינה הצליחה. בדוק שהטקסט כולל רק את השיר, ואז הדפס.';
+ }catch(err){
+  $('status').textContent='הדפדפן לא אפשר לטעון את השיר אוטומטית (זו הגבלת אבטחה נפוצה).\nפתח את הקישור בכפתור „פתח את הקישור”, העתק את המילים והאקורדים, והדבק בתיבה. הטקסט לא נמחק.';
+ }finally{btn.disabled=false}
+});
+function printSong(){updatePreview();if(!$('lyrics').value.trim()){alert('הדבק קודם את מילות השיר.');return}window.print()}
+$('print').addEventListener('click',printSong);$('print2').addEventListener('click',printSong);
+$('startScroll').addEventListener('click',()=>{if(scrollTimer)clearInterval(scrollTimer);const speed=Number($('speed').value);scrollTimer=setInterval(()=>{window.scrollBy(0,speed);if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2){clearInterval(scrollTimer);scrollTimer=null}},40)});
+$('stopScroll').addEventListener('click',()=>{if(scrollTimer)clearInterval(scrollTimer);scrollTimer=null});
+$('topScroll').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+updatePreview();
+</script>
+</body>
+</html>
