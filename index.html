@@ -38,6 +38,12 @@ button:disabled{opacity:.5;cursor:default}
  #preview{display:block!important;min-height:0;border:0;border-radius:0;padding:0;font-size:10.5pt;line-height:1.35;white-space:pre-wrap;overflow:visible;overflow-wrap:normal;word-break:normal;direction:rtl;
  column-count:2;column-gap:10mm;column-rule:1px solid #111;column-fill:balance}
  #songTitle{display:none!important}
+ body.print-single #preview{font-size:7.5pt;line-height:1.08}
+ body.print-original #preview{display:none!important}
+ body.print-original #originalReader{display:block!important;max-width:100%;width:auto;max-height:265mm;object-fit:contain;margin:0 auto}
+ body.print-original #originalReader[hidden]{display:none!important}
+ #originalReader{break-inside:avoid;page-break-inside:avoid}
+ body.print-original #originalReader{display:block!important}
 }
 </style>
 </head>
@@ -63,12 +69,20 @@ button:disabled{opacity:.5;cursor:default}
 <input id="titleInput" placeholder="שם השיר">
 <label for="lyrics">מילים ואקורדים</label>
 <textarea id="lyrics" placeholder="הדבק כאן את מילות השיר והאקורדים. אפשר לשמור על ירידות השורה המקוריות."></textarea>
+<label for="printMode">מספר דפים</label>
+<select id="printMode"><option value="multi">כמה דפים — טקסט גדול וקריא</option><option value="single">עמוד אחד — הקטנת הטקסט לפי הצורך</option></select>
+<label style="display:flex;gap:8px;align-items:center;font-weight:400"><input id="printOriginal" type="checkbox" style="width:auto"> הדפס את תמונת המקור כדי לשמור בדיוק על מיקום האקורדים</label>
 <div class="actions controls"><button id="update">עדכן תצוגה</button><button class="secondary" id="clear">נקה</button><button id="print">הדפס / שמור כ־PDF</button></div>
+<div class="actions controls"><button id="saveSong">שמור שיר באתר</button><button class="secondary" id="toggleOriginal">הצג/הסתר תמונת מקור</button></div>
+<label for="savedSongs">השירים ששמרתי באתר</label>
+<select id="savedSongs"><option value="">— בחר שיר שמור —</option></select>
+<div class="actions controls"><button id="openSaved">פתח שיר שמור</button><button class="secondary" id="deleteSaved">מחק שיר שמור</button></div>
+<div id="saveStatus" class="status">שירים נשמרים בדפדפן הזה בלבד, כדי שתוכל לחזור אליהם ולקרוא עם האקורדים.</div>
 <p class="note">האתר לא שולח את הטקסט שלך לשום שרת. טעינה אוטומטית עובדת רק אם אתר המקור מאפשר זאת בדפדפן.</p>
 </section>
 <section class="panel">
 <div class="preview-head"><div><h2>3. תצוגה מקדימה</h2><div id="songTitle"></div></div><button class="controls" id="print2">הדפס</button></div>
-<div id="preview"></div>
+<img id="originalReader" alt="תמונת המקור של השיר" hidden style="display:none;max-width:100%;height:auto;margin-bottom:14px"><div id="preview"></div>
 </section>
 <section class="panel controls">
 <h2>גלילה איטית</h2>
@@ -78,11 +92,50 @@ button:disabled{opacity:.5;cursor:default}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-let scrollTimer=null, selectedImage=null, ocrWorkerPromise=null;
+let scrollTimer=null, selectedImage=null, ocrWorkerPromise=null, originalDataUrl=null;
+const SAVED_KEY='print-songs-saved-v1';
+function readSaved(){try{return JSON.parse(localStorage.getItem(SAVED_KEY)||'[]')}catch(e){return []}}
+function refreshSaved(){
+ const select=$('savedSongs'),old=select.value;select.innerHTML='<option value="">— בחר שיר שמור —</option>';
+ readSaved().forEach((s,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=s.title||('שיר '+(i+1));select.appendChild(o)});
+ if(old!==''&&select.querySelector('option[value="'+old+'"]'))select.value=old;
+}
+function fileToDataUrl(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(file)})}
+function setOriginal(dataUrl){
+ originalDataUrl=dataUrl||null;
+ const img=$('originalReader');if(originalDataUrl){img.src=originalDataUrl;img.hidden=false;img.style.display='block'}else{img.removeAttribute('src');img.hidden=true;img.style.display='none'}
+}
+$('saveSong').addEventListener('click',async()=>{
+ const title=$('titleInput').value.trim()||'שיר ללא שם',text=$('lyrics').value.trim();
+ if(!text&&!originalDataUrl){$('saveStatus').textContent='אין עדיין שיר לשמירה. העלה תמונה או הכנס טקסט.';return}
+ try{
+  const songs=readSaved();const item={title,text,image:originalDataUrl,updatedAt:Date.now()};
+  const idx=$('savedSongs').value;
+  if(idx!==''){songs[Number(idx)]=item}else songs.push(item);
+  localStorage.setItem(SAVED_KEY,JSON.stringify(songs));refreshSaved();$('savedSongs').value=String(idx!==''?Number(idx):songs.length-1);
+  $('saveStatus').textContent='השיר נשמר בדפדפן הזה. אפשר לפתוח אותו שוב גם לקריאה.';
+ }catch(e){$('saveStatus').textContent='לא ניתן לשמור — ייתכן שאין מספיק מקום בדפדפן. נסה תמונה קטנה יותר.'}
+});
+$('openSaved').addEventListener('click',()=>{
+ const i=$('savedSongs').value;if(i===''){$('saveStatus').textContent='בחר שיר מהרשימה.';return}
+ const s=readSaved()[Number(i)];if(!s)return;
+ $('titleInput').value=s.title||'';$('lyrics').value=s.text||'';setOriginal(s.image||null);updatePreview();
+ $('imageStatus').textContent=s.image?'תמונת המקור של השיר השמור זמינה.':'לשיר הזה לא נשמרה תמונת מקור.';
+ $('saveStatus').textContent='השיר נטען. אפשר לקרוא, לערוך או להדפיס.';
+});
+$('deleteSaved').addEventListener('click',()=>{
+ const i=$('savedSongs').value;if(i===''){$('saveStatus').textContent='בחר שיר מהרשימה.';return}
+ const songs=readSaved();songs.splice(Number(i),1);localStorage.setItem(SAVED_KEY,JSON.stringify(songs));refreshSaved();$('saveStatus').textContent='השיר נמחק מהרשימה המקומית.';
+});
+$('toggleOriginal').addEventListener('click',()=>{
+ const img=$('originalReader');if(!originalDataUrl){$('imageStatus').textContent='העלה תמונת מקור קודם.';return}
+ img.hidden=!img.hidden;img.style.display=img.hidden?'none':'block';
+});
 function setImage(file){
  if(!file || !file.type.startsWith('image/')){$('imageStatus').textContent='בחר קובץ תמונה תקין.';return}
  selectedImage=file;
  const img=$('imagePreview');img.src=URL.createObjectURL(file);img.hidden=false;
+ fileToDataUrl(file).then(setOriginal).catch(()=>{originalDataUrl=null});
  $('imageStatus').textContent='התמונה מוכנה. לחץ „חלץ מילים ואקורדים מהתמונה”.';
 }
 $('songImage').addEventListener('change',e=>setImage(e.target.files?.[0]));
@@ -154,12 +207,19 @@ $('load').addEventListener('click',async()=>{
   $('status').textContent='הדפדפן לא אפשר לטעון את השיר אוטומטית (זו הגבלת אבטחה נפוצה).\nפתח את הקישור בכפתור „פתח את הקישור”, העתק את המילים והאקורדים, והדבק בתיבה. הטקסט לא נמחק.';
  }finally{btn.disabled=false}
 });
-function printSong(){updatePreview();if(!$('lyrics').value.trim()){alert('הדבק קודם את מילות השיר.');return}window.print()}
+function printSong(){
+ updatePreview();
+ if(!$('lyrics').value.trim()&&!originalDataUrl){alert('העלה תמונת שיר או הכנס קודם את המילים.');return}
+ document.body.classList.toggle('print-single',$('printMode').value==='single');
+ document.body.classList.toggle('print-original',$('printOriginal').checked&&!!originalDataUrl);
+ window.print();
+}
+window.addEventListener('afterprint',()=>document.body.classList.remove('print-single','print-original'));
 $('print').addEventListener('click',printSong);$('print2').addEventListener('click',printSong);
 $('startScroll').addEventListener('click',()=>{if(scrollTimer)clearInterval(scrollTimer);const speed=Number($('speed').value);scrollTimer=setInterval(()=>{window.scrollBy(0,speed);if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-2){clearInterval(scrollTimer);scrollTimer=null}},40)});
 $('stopScroll').addEventListener('click',()=>{if(scrollTimer)clearInterval(scrollTimer);scrollTimer=null});
 $('topScroll').addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
-updatePreview();
+refreshSaved();updatePreview();
 </script>
 </body>
 </html>
