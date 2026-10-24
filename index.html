@@ -39,7 +39,7 @@ button:disabled{opacity:.5;cursor:default}
  column-count:2;column-gap:10mm;column-rule:1px solid #111;column-fill:balance}
  #songTitle{display:none!important}
  body.print-single #preview{font-size:7.5pt;line-height:1.08}
- body.print-original #preview{display:none!important}
+ body.print-original #preview{display:none!important}\n #printBatch{display:none}\n body.print-original #printBatch{display:block!important}\n body.print-original #originalReader{display:none!important}\n #printBatch img{display:block;width:100%;max-width:100%;max-height:270mm;height:auto;object-fit:contain;margin:0 auto;break-inside:avoid;page-break-inside:avoid}\n #printBatch .print-source-page{break-after:page;page-break-after:always}\n #printBatch .print-source-page:last-child{break-after:auto;page-break-after:auto}
  body.print-original #originalReader{display:block!important;max-width:100%;width:auto;max-height:265mm;object-fit:contain;margin:0 auto}
  body.print-original #originalReader[hidden]{display:none!important}
  #originalReader{break-inside:avoid;page-break-inside:avoid}
@@ -86,7 +86,7 @@ button:disabled{opacity:.5;cursor:default}
 </section>
 <section class="panel">
 <div class="preview-head"><div><h2>3. תצוגה מקדימה</h2><div id="songTitle"></div></div><button class="controls" id="print2">הדפס</button></div>
-<img id="originalReader" alt="תמונת המקור של השיר" hidden style="display:none;max-width:100%;height:auto;margin-bottom:14px"><div id="preview"></div>
+<img id="originalReader" alt="תמונת המקור של השיר" hidden style="display:none;max-width:100%;height:auto;margin-bottom:14px"><div id="printBatch" aria-hidden="true"></div><div id="preview"></div>
 </section>
 <section class="panel controls">
 <h2>גלילה איטית</h2>
@@ -242,9 +242,19 @@ $('load').addEventListener('click',async()=>{
 });
 function printSong(){
  updatePreview();
- if(!$('lyrics').value.trim()&&!originalDataUrl){alert('העלה תמונת שיר או הכנס קודם את המילים.');return}
+ const useOriginal=$('printOriginal').checked&&(uploadedImages.length>0||!!originalDataUrl);
+ if(!$('lyrics').value.trim()&&!originalDataUrl&&!uploadedImages.length){alert('העלה תמונת שיר או הכנס קודם את המילים.');return}
+ const batch=$('printBatch');batch.innerHTML='';
+ if(useOriginal){
+  const sources=uploadedImages.length?uploadedImages.map(item=>item.previewUrl):[originalDataUrl];
+  sources.forEach((src,i)=>{
+   const page=document.createElement('div');page.className='print-source-page';
+   const img=document.createElement('img');img.src=src;img.alt='תמונת מקור '+(i+1);
+   page.appendChild(img);batch.appendChild(page);
+  });
+ }
  document.body.classList.toggle('print-single',$('printMode').value==='single');
- document.body.classList.toggle('print-original',$('printOriginal').checked&&!!originalDataUrl);
+ document.body.classList.toggle('print-original',useOriginal);
  window.print();
 }
 window.addEventListener('afterprint',()=>document.body.classList.remove('print-single','print-original'));
