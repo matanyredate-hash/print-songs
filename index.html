@@ -57,10 +57,45 @@ button:disabled{opacity:.5;cursor:default}
  #originalReader{break-inside:avoid;page-break-inside:avoid}
  body.print-original #originalReader{display:block!important}
 }
+
+/* Refined, restrained professional interface */
+:root{color-scheme:light;--ink:#202b3c;--blue:#24466c;--line:#d9dfe6;--soft:#f4f6f8;--paper:#fff;--muted:#657184;--accent:#2f6c70}
+body{background:#f2f4f6;color:var(--ink);font-family:Arial,"Noto Sans Hebrew",sans-serif;line-height:1.55}
+header{background:#fff;color:var(--ink);padding:23px 24px;border-bottom:1px solid #dce1e7;text-align:initial}
+.header-inner{max-width:1200px;margin:0 auto;display:flex;align-items:center;gap:14px}
+.brand-mark{width:44px;height:44px;display:grid;place-items:center;border:1px solid #cbd5df;color:var(--blue);font-size:25px;border-radius:8px;flex:none}
+header h1{margin:0;font-size:25px;font-weight:700;letter-spacing:-.4px}
+header p{margin:3px 0 0;color:#647184;font-size:14px}
+.header-tag{margin-right:auto;border:1px solid #d9e0e7;border-radius:5px;padding:5px 10px;color:#5d6878;font-size:12px;white-space:nowrap}
+main{max-width:1200px;margin:24px auto;padding:0 20px 40px;gap:18px}
+.panel{background:#fff;border:1px solid #dce2e8;border-radius:8px;padding:21px;box-shadow:0 2px 5px rgba(25,39,56,.025)}
+h2{font-size:17px;font-weight:700;letter-spacing:-.15px;margin:0 0 15px;padding-bottom:10px;border-bottom:1px solid #e7ebef}
+label{font-size:14px;color:#354154;margin:13px 0 6px}
+input,textarea,select{font-size:14px;padding:10px 11px;border:1px solid #cbd3dd;border-radius:5px;box-shadow:none}
+input:focus,textarea:focus,select:focus{outline:2px solid #c5d8e5;outline-offset:1px;border-color:#6f91aa}
+textarea{min-height:260px;line-height:1.7}
+button{font-size:14px;border-radius:5px;padding:10px 14px;background:#24466c;transition:background .15s ease}
+button:hover{background:#193653}
+button.secondary{background:#edf1f4;color:#344357;border:1px solid #d7dfe6}
+button.secondary:hover{background:#e2e8ed}
+.actions{gap:8px}
+.note{font-size:13px;color:#687486}
+.status{border:1px solid #e0e6eb;background:#f6f8fa;border-radius:5px;color:#4f5e70;font-size:13px}
+#dropZone{border:1px dashed #9eacbb;border-radius:6px;background:#f8fafb;color:#344a61;padding:22px 14px}
+#dropZone.dragover{background:#eaf1f5;border-color:#416f91}
+#dropZone strong{font-size:15px;font-weight:700}
+.image-stack-item{background:#fff;border:1px solid #dce2e8;border-radius:6px;padding:10px}
+.image-stack-item .stack-caption{color:#5e6b7d;font-size:12px}
+#preview{border:1px solid #e0e5ea;border-radius:5px;background:#fff;padding:22px;line-height:1.8}
+#songTitle{font-size:19px;color:#243d58}
+.scroll-controls{align-items:center}
+@media(min-width:850px){main{grid-template-columns:minmax(330px,1fr) minmax(0,1fr)}.editor{grid-row:span 2}}
+@media(max-width:600px){header{padding:18px 15px}.header-inner{gap:10px}.brand-mark{width:38px;height:38px}header h1{font-size:21px}.header-tag{display:none}main{padding:0 10px 25px;margin:14px auto}.panel{padding:15px}}
+
 </style>
 </head>
 <body>
-<header><h1>מדפיס השירים</h1><p>מסדרים את מילות השיר להדפסה נקייה בשני טורים</p></header>
+<header><div class="header-inner"><div class="brand-mark" aria-hidden="true">♫</div><div><h1>מדפיס השירים</h1><p>סידור והדפסה של מילות שירים ואקורדים</p></div><span class="header-tag">כלי עבודה</span></div></header>
 <main>
 <section class="panel editor">
 <h2>1. תמונה של השיר</h2>
