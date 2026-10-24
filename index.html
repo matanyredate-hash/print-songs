@@ -53,7 +53,10 @@ button:disabled{opacity:.5;cursor:default}
 <section class="panel editor">
 <h2>1. תמונה של השיר</h2>
 <label for="songImage">העלה צילום מסך או תמונה של מילות השיר והאקורדים</label>
-<input id="songImage" type="file" accept="image/*">
+<input id="songImage" type="file" accept="image/*" multiple>
+<label for="imageQueue">קבצים שהועלו (בחר תמונה לעבודה)</label>
+<select id="imageQueue" disabled><option value="">— בחר תמונה —</option></select>
+<p class="note">אפשר לבחור כמה תמונות יחד. בחר כל תמונה מהרשימה כדי לחלץ ממנה טקסט או לשמור אותה כשיר נפרד.</p>
 <div class="actions controls"><button id="readImage">חלץ מילים ואקורדים מהתמונה</button><button class="secondary" id="pasteImage">הדבק תמונה מהלוח</button></div>
 <div id="imageStatus" class="status">אפשר גם להעתיק צילום מסך ואז ללחוץ „הדבק תמונה מהלוח”. אחרי חילוץ הטקסט, בדוק את האקורדים לפני ההדפסה.</div>
 <img id="imagePreview" alt="תצוגה מקדימה של תמונת השיר" hidden style="max-width:100%;max-height:260px;object-fit:contain;margin-top:10px;border:1px solid #d8deea;border-radius:8px">
@@ -92,7 +95,7 @@ button:disabled{opacity:.5;cursor:default}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-let scrollTimer=null, selectedImage=null, ocrWorkerPromise=null, originalDataUrl=null;
+let scrollTimer=null, selectedImage=null, ocrWorkerPromise=null, originalDataUrl=null, uploadedImages=[];
 const SAVED_KEY='print-songs-saved-v1';
 function readSaved(){try{return JSON.parse(localStorage.getItem(SAVED_KEY)||'[]')}catch(e){return []}}
 function refreshSaved(){
@@ -131,14 +134,31 @@ $('toggleOriginal').addEventListener('click',()=>{
  const img=$('originalReader');if(!originalDataUrl){$('imageStatus').textContent='העלה תמונת מקור קודם.';return}
  img.hidden=!img.hidden;img.style.display=img.hidden?'none':'block';
 });
+function showUploadedImage(index){
+ const item=uploadedImages[index];if(!item)return;
+ selectedImage=item.file;
+ const img=$('imagePreview');img.src=item.previewUrl;img.hidden=false;
+ fileToDataUrl(item.file).then(setOriginal).catch(()=>{originalDataUrl=null});
+ $('imageQueue').value=String(index);
+ $('imageStatus').textContent='נבחרה תמונה '+(index+1)+' מתוך '+uploadedImages.length+'. לחץ „חלץ מילים ואקורדים מהתמונה”.';
+}
 function setImage(file){
  if(!file || !file.type.startsWith('image/')){$('imageStatus').textContent='בחר קובץ תמונה תקין.';return}
- selectedImage=file;
- const img=$('imagePreview');img.src=URL.createObjectURL(file);img.hidden=false;
- fileToDataUrl(file).then(setOriginal).catch(()=>{originalDataUrl=null});
- $('imageStatus').textContent='התמונה מוכנה. לחץ „חלץ מילים ואקורדים מהתמונה”.';
+ uploadedImages.push({file,previewUrl:URL.createObjectURL(file)});
+ const queue=$('imageQueue');queue.innerHTML='<option value="">— בחר תמונה —</option>';
+ uploadedImages.forEach((item,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=(i+1)+'. '+item.file.name;queue.appendChild(o)});
+ queue.disabled=false;showUploadedImage(uploadedImages.length-1);
 }
-$('songImage').addEventListener('change',e=>setImage(e.target.files?.[0]));
+$('imageQueue').addEventListener('change',e=>{if(e.target.value!=='')showUploadedImage(Number(e.target.value))});
+$('songImage').addEventListener('change',e=>{
+ const files=[...(e.target.files||[])].filter(f=>f.type.startsWith('image/'));
+ if(!files.length)return;
+ uploadedImages=[];files.forEach(file=>uploadedImages.push({file,previewUrl:URL.createObjectURL(file)}));
+ const queue=$('imageQueue');queue.innerHTML='<option value="">— בחר תמונה —</option>';
+ uploadedImages.forEach((item,i)=>{const o=document.createElement('option');o.value=String(i);o.textContent=(i+1)+'. '+item.file.name;queue.appendChild(o)});
+ queue.disabled=false;showUploadedImage(0);
+ $('imageStatus').textContent='הועלו '+uploadedImages.length+' תמונות. בחר תמונה מהרשימה כדי לעבוד עליה.';
+});
 $('pasteImage').addEventListener('click',async()=>{
  try{
   const items=await navigator.clipboard.read();
