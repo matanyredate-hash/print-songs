@@ -45,7 +45,14 @@ button:disabled{opacity:.5;cursor:default}
 <header><h1>מדפיס השירים</h1><p>מסדרים את מילות השיר להדפסה נקייה בשני טורים</p></header>
 <main>
 <section class="panel editor">
-<h2>1. הבאת השיר</h2>
+<h2>1. תמונה של השיר</h2>
+<label for="songImage">העלה צילום מסך או תמונה של מילות השיר והאקורדים</label>
+<input id="songImage" type="file" accept="image/*">
+<div class="actions controls"><button id="readImage">חלץ מילים ואקורדים מהתמונה</button><button class="secondary" id="pasteImage">הדבק תמונה מהלוח</button></div>
+<div id="imageStatus" class="status">אפשר גם להעתיק צילום מסך ואז ללחוץ „הדבק תמונה מהלוח”. אחרי חילוץ הטקסט, בדוק את האקורדים לפני ההדפסה.</div>
+<img id="imagePreview" alt="תצוגה מקדימה של תמונת השיר" hidden style="max-width:100%;max-height:260px;object-fit:contain;margin-top:10px;border:1px solid #d8deea;border-radius:8px">
+<hr style="border:0;border-top:1px solid var(--line);margin:18px 0">
+<h2>2. קישור או טקסט (אפשר גם לדלג)</h2>
 <label for="source">מקור השיר</label>
 <select id="source"><option value="auto">זיהוי לפי הקישור</option><option value="negina">Negina</option><option value="nagnu">נגנו</option><option value="manual">הדבקת טקסט בלבד</option></select>
 <label for="url">קישור לשיר (לא חובה)</label>
@@ -60,7 +67,7 @@ button:disabled{opacity:.5;cursor:default}
 <p class="note">האתר לא שולח את הטקסט שלך לשום שרת. טעינה אוטומטית עובדת רק אם אתר המקור מאפשר זאת בדפדפן.</p>
 </section>
 <section class="panel">
-<div class="preview-head"><div><h2>2. תצוגה מקדימה</h2><div id="songTitle"></div></div><button class="controls" id="print2">הדפס</button></div>
+<div class="preview-head"><div><h2>3. תצוגה מקדימה</h2><div id="songTitle"></div></div><button class="controls" id="print2">הדפס</button></div>
 <div id="preview"></div>
 </section>
 <section class="panel controls">
@@ -71,7 +78,54 @@ button:disabled{opacity:.5;cursor:default}
 </main>
 <script>
 const $=id=>document.getElementById(id);
-let scrollTimer=null;
+let scrollTimer=null, selectedImage=null, ocrWorkerPromise=null;
+function setImage(file){
+ if(!file || !file.type.startsWith('image/')){$('imageStatus').textContent='בחר קובץ תמונה תקין.';return}
+ selectedImage=file;
+ const img=$('imagePreview');img.src=URL.createObjectURL(file);img.hidden=false;
+ $('imageStatus').textContent='התמונה מוכנה. לחץ „חלץ מילים ואקורדים מהתמונה”.';
+}
+$('songImage').addEventListener('change',e=>setImage(e.target.files?.[0]));
+$('pasteImage').addEventListener('click',async()=>{
+ try{
+  const items=await navigator.clipboard.read();
+  for(const item of items){const type=item.types.find(t=>t.startsWith('image/'));if(type){setImage(await item.getType(type));return}}
+  $('imageStatus').textContent='לא נמצאה תמונה בלוח. העתק קודם צילום מסך או תמונה.';
+ }catch(e){$('imageStatus').textContent='הדבקה מהלוח נחסמה בדפדפן. אפשר לבחור קובץ תמונה, או ללחוץ על התיבה וללחוץ Ctrl+V.'}
+});
+document.addEventListener('paste',e=>{
+ const item=[...(e.clipboardData?.items||[])].find(i=>i.type.startsWith('image/'));
+ if(item){const f=item.getAsFile();if(f)setImage(f)}
+});
+async function getOcrWorker(){
+ if(!ocrWorkerPromise){
+  ocrWorkerPromise=(async()=>{
+   if(!window.Tesseract){
+    await new Promise((resolve,reject)=>{
+     const s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+     s.onload=resolve;s.onerror=()=>reject(new Error('לא ניתן לטעון את מנוע זיהוי התמונה. ייתכן שהסינון חוסם את שירות הזיהוי.'));
+     document.head.appendChild(s);
+    });
+   }
+   return await Tesseract.createWorker('heb+eng',1,{logger:m=>{if(m.status)$('imageStatus').textContent='מזהה טקסט: '+m.status+(m.progress?' '+Math.round(m.progress*100)+'%':'')}})
+  })();
+ }
+ return ocrWorkerPromise;
+}
+$('readImage').addEventListener('click',async()=>{
+ if(!selectedImage){$('imageStatus').textContent='בחר או הדבק קודם תמונה של השיר.';return}
+ const btn=$('readImage');btn.disabled=true;
+ try{
+  $('imageStatus').textContent='טוען מנוע זיהוי ומנתח את התמונה. בפעם הראשונה זה עשוי לקחת קצת זמן…';
+  const worker=await getOcrWorker();const result=await worker.recognize(selectedImage);
+  const text=(result.data.text||'').replace(/\\r/g,'').replace(/\\n{3,}/g,'\\n\\n').trim();
+  if(!text)throw new Error('לא זוהה טקסט בתמונה. נסה צילום חד יותר.');
+  $('lyrics').value=text;updatePreview();
+  $('imageStatus').textContent='הטקסט חולץ לתיבה למטה. זיהוי אוטומטי עלול לטעות באקורדים ובסדר השורות — בדוק ותקן לפני ההדפסה.';
+  $('lyrics').scrollIntoView({behavior:'smooth',block:'center'});
+ }catch(err){$('imageStatus').textContent='לא הצלחתי לזהות את התמונה: '+(err.message||'שגיאה')+'\\nאפשר לנסות צילום חד וברור יותר או להדביק את הטקסט ידנית.';ocrWorkerPromise=null}
+ finally{btn.disabled=false}
+});
 function updatePreview(){ const text=$('lyrics').value; $('preview').textContent=text; $('songTitle').textContent=$('titleInput').value.trim(); }
 $('update').addEventListener('click',()=>{updatePreview();$('status').textContent=$('lyrics').value.trim()?'התצוגה עודכנה. אפשר להדפיס.':'לא הוזן טקסט עדיין — הדבק את מילות השיר בתיבה.';});
 $('lyrics').addEventListener('input',updatePreview);
