@@ -24,7 +24,7 @@ button:disabled{opacity:.5;cursor:default}
 .status{padding:10px 12px;border-radius:9px;background:var(--soft);margin-top:10px;white-space:pre-wrap;font-size:14px}
 .preview-head{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
 #songTitle{font-size:20px;font-weight:700}
-#preview{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:220px;padding:18px;white-space:pre-wrap;overflow-wrap:anywhere;direction:rtl;font-size:16px;line-height:1.65}
+#preview{background:#fff;border:1px solid var(--line);border-radius:8px;min-height:220px;padding:18px;white-space:pre-wrap;overflow-wrap:normal;word-break:normal;direction:rtl;font-size:16px;line-height:1.65}
 #preview:empty:before{content:"כאן תופיע תצוגת השיר";color:#8a94a7}
 .scroll-controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .small{font-size:13px;color:#66728a}
@@ -35,7 +35,7 @@ button:disabled{opacity:.5;cursor:default}
  header,.controls,.editor,.preview-head,.no-print,.note,.status{display:none!important}
  main{display:block;max-width:none;margin:0;padding:0}
  .panel{border:0;border-radius:0;box-shadow:none;padding:0}
- #preview{display:block!important;min-height:0;border:0;border-radius:0;padding:0;font-size:10.5pt;line-height:1.35;white-space:pre-wrap;overflow:visible;overflow-wrap:anywhere;direction:rtl;
+ #preview{display:block!important;min-height:0;border:0;border-radius:0;padding:0;font-size:10.5pt;line-height:1.35;white-space:pre-wrap;overflow:visible;overflow-wrap:normal;word-break:normal;direction:rtl;
  column-count:2;column-gap:10mm;column-rule:1px solid #111;column-fill:balance}
  #songTitle{display:none!important}
 }
@@ -72,8 +72,8 @@ button:disabled{opacity:.5;cursor:default}
 <script>
 const $=id=>document.getElementById(id);
 let scrollTimer=null;
-function updatePreview(){ $('preview').textContent=$('lyrics').value; $('songTitle').textContent=$('titleInput').value.trim(); }
-$('update').addEventListener('click',updatePreview);
+function updatePreview(){ const text=$('lyrics').value; $('preview').textContent=text; $('songTitle').textContent=$('titleInput').value.trim(); }
+$('update').addEventListener('click',()=>{updatePreview();$('status').textContent=$('lyrics').value.trim()?'התצוגה עודכנה. אפשר להדפיס.':'לא הוזן טקסט עדיין — הדבק את מילות השיר בתיבה.';});
 $('lyrics').addEventListener('input',updatePreview);
 $('titleInput').addEventListener('input',()=>{$('songTitle').textContent=$('titleInput').value.trim()});
 $('clear').addEventListener('click',()=>{if(!confirm('לנקות את שם השיר והטקסט?'))return;$('lyrics').value='';$('titleInput').value='';$('url').value='';$('status').textContent='אפשר להדביק שיר חדש.';updatePreview()});
@@ -83,9 +83,10 @@ $('load').addEventListener('click',async()=>{
  const u=getUrl(); if(!u){$('status').textContent='הדבק קודם קישור תקין לשיר.';return}
  const btn=$('load');btn.disabled=true;$('status').textContent='מנסה לטעון את הדף…';
  try{
-  const response=await fetch(u,{mode:'cors',credentials:'omit'});
-  if(!response.ok)throw new Error('HTTP '+response.status);
-  const html=await response.text();const doc=new DOMParser().parseFromString(html,'text/html');
+  const response=await fetch('/api/fetch-song?url='+encodeURIComponent(u),{credentials:'same-origin'});
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(payload.error||('HTTP '+response.status));
+  const html=payload.html||'';if(!html)throw new Error('לא התקבל HTML');const doc=new DOMParser().parseFromString(html,'text/html');
   doc.querySelectorAll('script,style,nav,header,footer,form,button,iframe,noscript').forEach(n=>n.remove());
   let candidates=[...doc.querySelectorAll('main,article,[class*="song"],[class*="lyrics"],[class*="content"],.entry-content')];
   candidates.sort((a,b)=>(b.innerText||'').length-(a.innerText||'').length);
