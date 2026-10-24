@@ -204,12 +204,12 @@ $('readImage').addEventListener('click',async()=>{
   const text=(result.data.text||'').replace(/\\r/g,'').replace(/\\n{3,}/g,'\\n\\n').trim();
   if(!text)throw new Error('לא זוהה טקסט בתמונה. נסה צילום חד יותר.');
   const existing=$('lyrics').value.trim();
-  $('lyrics').value=existing?existing+'\\n\\n'+text:text;updatePreview();
+  $('lyrics').value=existing?existing+'\n\n'+text:text;updatePreview();
   const nextIndex=$('imageQueue').value===''?-1:Number($('imageQueue').value)+1;
   if(nextIndex>=0&&nextIndex<uploadedImages.length){showUploadedImage(nextIndex);$('imageStatus').textContent='הטקסט מהתמונה נוסף בסוף הטקסט הקיים. מוכנה התמונה הבאה ('+(nextIndex+1)+' מתוך '+uploadedImages.length+'). לחץ שוב על „חלץ” כדי להוסיף גם אותה.'}
   else $('imageStatus').textContent='הטקסט מהתמונה נוסף לסוף הטקסט הקיים. אפשר לבחור תמונה נוספת וללחוץ שוב „חלץ”. זיהוי אוטומטי עלול לטעות באקורדים — בדוק לפני ההדפסה.';
   $('lyrics').scrollIntoView({behavior:'smooth',block:'center'});
- }catch(err){$('imageStatus').textContent='לא הצלחתי לזהות את התמונה: '+(err.message||'שגיאה')+'\\nאפשר לנסות צילום חד וברור יותר או להדביק את הטקסט ידנית.';ocrWorkerPromise=null}
+ }catch(err){$('imageStatus').textContent='לא הצלחתי לזהות את התמונה: '+(err.message||'שגיאה')+'\nאפשר לנסות צילום חד וברור יותר או להדביק את הטקסט ידנית.';ocrWorkerPromise=null}
  finally{btn.disabled=false}
 });
 function updatePreview(){ const text=$('lyrics').value; $('preview').textContent=text; $('songTitle').textContent=$('titleInput').value.trim(); }
