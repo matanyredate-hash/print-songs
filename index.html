@@ -201,7 +201,7 @@ $('readImage').addEventListener('click',async()=>{
  try{
   $('imageStatus').textContent='טוען מנוע זיהוי ומנתח את התמונה. בפעם הראשונה זה עשוי לקחת קצת זמן…';
   const worker=await getOcrWorker();const result=await worker.recognize(selectedImage);
-  const text=(result.data.text||'').replace(/\\r/g,'').replace(/\\n{3,}/g,'\\n\\n').trim();
+  const text=(result.data.text||'').replace(/\r/g,'').replace(/\n{3,}/g,'\n\n').trim();
   if(!text)throw new Error('לא זוהה טקסט בתמונה. נסה צילום חד יותר.');
   const existing=$('lyrics').value.trim();
   $('lyrics').value=existing?existing+'\n\n'+text:text;updatePreview();
