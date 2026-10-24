@@ -32,6 +32,11 @@ button:disabled{opacity:.5;cursor:default}
 #dropZone.dragover{background:#e5edff;border-color:#2357d8}
 #dropZone strong{display:block;font-size:17px;margin-bottom:5px}
 #imageStack{display:grid;gap:10px;margin-top:12px}
+.preview-pages{display:grid;gap:18px;margin:12px 0}
+.preview-page{background:#fff;border:1px solid #d5dce4;padding:12px;box-shadow:0 2px 5px rgba(25,39,56,.04);text-align:center}
+.preview-page img{display:block;width:100%;height:auto;max-height:900px;object-fit:contain;margin:0 auto}
+.preview-page-label{font-size:12px;color:#657184;text-align:right;margin-bottom:7px}
+.preview-pages:empty{display:none}
 .image-stack-item{border:1px solid var(--line);border-radius:10px;padding:8px;background:#fafbfe}
 .image-stack-item img{display:block;width:100%;height:auto;max-height:420px;object-fit:contain;object-position:top center}
 .image-stack-item .stack-caption{font-size:13px;color:#59667d;margin-bottom:5px}
@@ -51,7 +56,8 @@ button:disabled{opacity:.5;cursor:default}
  body.print-original #printBatch{display:block!important}
  body.print-original #originalReader{display:none!important}
  #printBatch img{display:block;width:100%;max-width:100%;max-height:270mm;height:auto;object-fit:contain;margin:0 auto;break-inside:avoid;page-break-inside:avoid}
- #printBatch .print-source-page{break-inside:avoid;page-break-inside:avoid;margin:0 0 4mm}
+ #printBatch .print-source-page{break-after:page;page-break-after:always;break-inside:avoid;page-break-inside:avoid;margin:0}
+ #printBatch .print-source-page:last-child{break-after:auto;page-break-after:auto}
  body.print-original #originalReader{display:block!important;max-width:100%;width:auto;max-height:265mm;object-fit:contain;margin:0 auto}
  body.print-original #originalReader[hidden]{display:none!important}
  #originalReader{break-inside:avoid;page-break-inside:avoid}
@@ -134,7 +140,7 @@ button.secondary:hover{background:#e2e8ed}
 </section>
 <section class="panel">
 <div class="preview-head"><div><h2>3. תצוגה מקדימה</h2><div id="songTitle"></div></div><button class="controls" id="print2">הדפס</button></div>
-<img id="originalReader" alt="תמונת המקור של השיר" hidden style="display:none;max-width:100%;height:auto;margin-bottom:14px"><div id="printBatch" aria-hidden="true"></div><div id="preview"></div>
+<img id="originalReader" alt="תמונת המקור של השיר" hidden style="display:none;max-width:100%;height:auto;margin-bottom:14px"><div id="previewPages" class="preview-pages"></div><div id="printBatch" aria-hidden="true"></div><div id="preview"></div>
 </section>
 <section class="panel controls">
 <h2>גלילה איטית</h2>
@@ -161,7 +167,8 @@ $('saveSong').addEventListener('click',async()=>{
  const title=$('titleInput').value.trim()||'שיר ללא שם',text=$('lyrics').value.trim();
  if(!text&&!originalDataUrl){$('saveStatus').textContent='אין עדיין שיר לשמירה. העלה תמונה או הכנס טקסט.';return}
  try{
-  const songs=readSaved();const item={title,text,image:originalDataUrl,updatedAt:Date.now()};
+  const images=await Promise.all(uploadedImages.map(async item=>({name:item.file.name,type:item.file.type,dataUrl:await fileToDataUrl(item.file)})));
+  const songs=readSaved();const item={title,text,image:originalDataUrl,images,updatedAt:Date.now()};
   const idx=$('savedSongs').value;
   if(idx!==''){songs[Number(idx)]=item}else songs.push(item);
   localStorage.setItem(SAVED_KEY,JSON.stringify(songs));refreshSaved();$('savedSongs').value=String(idx!==''?Number(idx):songs.length-1);
@@ -171,8 +178,14 @@ $('saveSong').addEventListener('click',async()=>{
 $('openSaved').addEventListener('click',()=>{
  const i=$('savedSongs').value;if(i===''){$('saveStatus').textContent='בחר שיר מהרשימה.';return}
  const s=readSaved()[Number(i)];if(!s)return;
- $('titleInput').value=s.title||'';$('lyrics').value=s.text||'';setOriginal(s.image||null);updatePreview();
- $('imageStatus').textContent=s.image?'תמונת המקור של השיר השמור זמינה.':'לשיר הזה לא נשמרה תמונת מקור.';
+ $('titleInput').value=s.title||'';$('lyrics').value=s.text||'';uploadedImages=[];
+ if(Array.isArray(s.images)&&s.images.length){
+  for(const saved of s.images){const blob=await (await fetch(saved.dataUrl)).blob();const file=new File([blob],saved.name||'תמונת שיר',{type:saved.type||blob.type||'image/jpeg'});uploadedImages.push({file,previewUrl:saved.dataUrl});}
+  refreshImageQueue(0);renderImageStack();setOriginal(s.images[0].dataUrl);
+ }else if(s.image){const blob=await (await fetch(s.image)).blob();const file=new File([blob],'תמונת שיר',{type:blob.type||'image/jpeg'});uploadedImages=[{file,previewUrl:s.image}];refreshImageQueue(0);renderImageStack();setOriginal(s.image);}
+ else{refreshImageQueue(-1);renderImageStack();setOriginal(null);}
+ updatePreview();
+ $('imageStatus').textContent=uploadedImages.length?'נטענו '+uploadedImages.length+' תמונות של השיר השמור.':'לשיר הזה לא נשמרה תמונת מקור.';
  $('saveStatus').textContent='השיר נטען. אפשר לקרוא, לערוך או להדפיס.';
 });
 $('deleteSaved').addEventListener('click',()=>{
@@ -199,11 +212,18 @@ function refreshImageQueue(selectIndex){
 }
 function renderImageStack(){
  const stack=$('imageStack');stack.innerHTML='';
+ const previewPages=$('previewPages');if(previewPages)previewPages.innerHTML='';
  uploadedImages.forEach((item,i)=>{
   const card=document.createElement('div');card.className='image-stack-item';
   const caption=document.createElement('div');caption.className='stack-caption';caption.textContent='חלק '+(i+1)+' — '+item.file.name;
   const img=document.createElement('img');img.src=item.previewUrl;img.alt='חלק '+(i+1)+' של השיר';
   card.append(caption,img);stack.appendChild(card);
+  if(previewPages){
+   const page=document.createElement('div');page.className='preview-page';
+   const pageLabel=document.createElement('div');pageLabel.className='preview-page-label';pageLabel.textContent='עמוד '+(i+1);
+   const pageImg=document.createElement('img');pageImg.src=item.previewUrl;pageImg.alt='עמוד '+(i+1)+' של השיר';
+   page.append(pageLabel,pageImg);previewPages.appendChild(page);
+  }
  });
 }
 function addImageFiles(fileList){
