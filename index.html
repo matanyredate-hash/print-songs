@@ -165,7 +165,7 @@ function setOriginal(dataUrl){
 }
 $('saveSong').addEventListener('click',async()=>{
  const title=$('titleInput').value.trim()||'שיר ללא שם',text=$('lyrics').value.trim();
- if(!text&&!originalDataUrl){$('saveStatus').textContent='אין עדיין שיר לשמירה. העלה תמונה או הכנס טקסט.';return}
+ if(!text&&!originalDataUrl&&!uploadedImages.length){$('saveStatus').textContent='אין עדיין שיר לשמירה. העלה תמונה או הכנס טקסט.';return}
  try{
   const images=await Promise.all(uploadedImages.map(async item=>({name:item.file.name,type:item.file.type,dataUrl:await fileToDataUrl(item.file)})));
   const songs=readSaved();const item={title,text,image:originalDataUrl,images,updatedAt:Date.now()};
@@ -175,7 +175,7 @@ $('saveSong').addEventListener('click',async()=>{
   $('saveStatus').textContent='השיר נשמר בדפדפן הזה. אפשר לפתוח אותו שוב גם לקריאה.';
  }catch(e){$('saveStatus').textContent='לא ניתן לשמור — ייתכן שאין מספיק מקום בדפדפן. נסה תמונה קטנה יותר.'}
 });
-$('openSaved').addEventListener('click',()=>{
+$('openSaved').addEventListener('click',async()=>{
  const i=$('savedSongs').value;if(i===''){$('saveStatus').textContent='בחר שיר מהרשימה.';return}
  const s=readSaved()[Number(i)];if(!s)return;
  $('titleInput').value=s.title||'';$('lyrics').value=s.text||'';uploadedImages=[];
