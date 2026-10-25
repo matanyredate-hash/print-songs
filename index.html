@@ -297,13 +297,13 @@ function correctChordOcr(raw){
  const chordPattern=/^(?:[A-G](?:#|b)?(?:m|maj|min|dim|aug|sus[24]?|add\d+)?(?:\/[A-G](?:#|b)?)?)$/i;
  const known=new Set(['A','Am','A7','Amaj7','Bb','B','Bm','B7','C','Cm','C7','Cmaj7','D','Dm','D7','Dm7','E','Em','E7','F','Fm','F7','G','Gm','G7','Gmaj7','F#m','C#m','D#m','Bb7','Eb','Ab']);
  const lines=raw.split('\n');
- const looksLikeChordToken=t=>chordPattern.test(t)||/^(?:[0-9]|[oO][mM])$/i.test(t);
+ const looksLikeChordToken=t=>chordPattern.test(t)||/^(?:[0-9]|[oO])$/i.test(t);
  return lines.map((line,i)=>{
   const tokens=[...line.matchAll(/\S+/g)];
   if(!tokens.length)return line;
   const compact=line.trim();
   const prev=(lines[i-1]||'').trim(), next=(lines[i+1]||'').trim();
-  const suspicious=tokens.some(m=>/^(?:6|5|om|0m)$/i.test(m[0]));
+  const suspicious=tokens.some(m=>/^(?:6|5|0|o|om|0m)$/i.test(m[0]));
   const chordCount=tokens.filter(m=>chordPattern.test(m[0])||known.has(m[0])).length;
   const chordLine=(tokens.length<=8 && tokens.every(m=>looksLikeChordToken(m[0]))) ||
     (tokens.length<=12 && chordCount>=1 && chordCount/tokens.length>=0.5) ||
@@ -314,7 +314,7 @@ function correctChordOcr(raw){
    const t=token.replace(/[.,;:!?()[\]{}]/g,'');
    let fix=t;
    if(/^6$/.test(t))fix='G';
-   else if(/^5$/.test(t))fix='F';
+   else if(/^(?:5|0|o|O)$/.test(t))fix='F';
    else if(/^(?:om|0m)$/i.test(t))fix='Am';
    // OCR sometimes confuses the first character in a short chord token.
    else if(/^[oO]m$/.test(t))fix='Am';
