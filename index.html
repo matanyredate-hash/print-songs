@@ -315,6 +315,7 @@ function correctChordOcr(raw){
    let fix=t;
    if(/^6$/.test(t))fix='G';
    else if(/^(?:5|0|o|O)$/.test(t))fix='F';
+   else if(t==='0M')fix='Dm';
    else if(/^(?:om|0m)$/i.test(t))fix='Am';
    // OCR sometimes confuses the first character in a short chord token.
    else if(/^[oO]m$/.test(t))fix='Am';
